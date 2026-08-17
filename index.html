@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph War Helper</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { background-color: #f5f5f5; padding: 12px; min-height: 100vh; display: flex; flex-direction: column; gap: 12px; }
+        .top-row { display: flex; gap: 15px; align-items: flex-start; width: 100%; }
+        .image-container { width: 50vw; background-color: #000000; border-radius: 12px; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; color: white; font-size: 1rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); padding: 10px; }
+        #game-canvas { width: 100%; height: auto; aspect-ratio: 771 / 451; object-fit: contain; cursor: pointer; display: none; background-color: #ffffff; border-radius: 4px; }
+        .controls-column { display: flex; flex-direction: column; gap: 15px; flex: 1; }
+        .action-buttons { display: flex; flex-direction: row; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .function-buttons { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; max-width: 50vw; }
+        .btn { background-color: #2b7cbf; color: white; border: none; padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; text-align: center; box-shadow: 0 3px 6px rgba(0,0,0,0.12); transition: background-color 0.2s, transform 0.1s; white-space: nowrap; }
+        .btn:hover { background-color: #1f5f94; }
+        .btn:active { transform: scale(0.98); }
+        .btn-func { background-color: #27ae60; font-family: 'Courier New', Courier, monospace; font-size: 0.82rem; padding: 7px 10px; display: flex; align-items: center; gap: 2px; }
+        .btn-func:hover { background-color: #1e8449; }
+        .box-param { width: 18px; height: 18px; border: 1.5px solid rgba(255,255,255,0.8); border-radius: 3px; display: inline-block; background-color: rgba(255,255,255,0.2); margin: 0 2px; }
+        #file-input { display: none; }
+        .bottom-panel { width: 100%; flex: 1; min-height: 150px; background-color: #ffffff; border: 2px solid #e0e0e0; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+        .player-indicator { font-weight: bold; font-size: 0.9rem; color: #2c3e50; display: flex; align-items: center; gap: 8px; }
+        .player-badge { background-color: #e74c3c; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
+        .side-badge { background-color: #8e44ad; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
+        .input-wrapper { display: flex; align-items: center; gap: 10px; width: 100%; }
+        .command-input-container { flex: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; background: #fafafa; min-height: 46px; }
+        .param-input { width: 65px; height: 28px; text-align: center; border: 1.5px solid #2b7cbf; border-radius: 4px; font-weight: bold; font-size: 0.85rem; outline: none; background: #fff; }
+        .param-input:focus { border-color: #1e8449; shadow: 0 0 4px rgba(30,132,73,0.4); }
+        .send-btn { background-color: #007bff; border: none; border-radius: 8px; width: 46px; height: 46px; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.15); transition: background-color 0.2s, transform 0.1s; }
+        .send-btn:hover { background-color: #0056b3; }
+        .send-btn:active { transform: scale(0.95); }
+        .send-btn svg { width: 22px; height: 22px; fill: white; }
+        .result-box { width: 100%; padding: 10px; background: #272c35; color: #2ecc71; font-family: monospace; font-size: 0.9rem; border-radius: 6px; word-break: break-all; min-height: 40px; }
+        .toast { position: fixed; bottom: -50px; left: 50%; transform: translateX(-50%); background-color: #2ecc71; color: white; padding: 10px 24px; border-radius: 20px; font-weight: bold; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 9999; }
+        .toast.show { bottom: 30px; opacity: 1; }
+        .toast.fade-out { opacity: 0; transition: opacity 0.4s ease-out; }
+        .btn.cross-copy-active {
+            background-color: #e67e22;
+            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.25);
+        }
+    
+    </style>
+</head>
+<body>
+
+    <div class="top-row">
+        <div class="image-container" id="image-container">
+            <span id="placeholder-text">Nơi chứa ảnh game (Click nút thêm ảnh hoặc dán Ctrl+V)</span>
+            <canvas id="game-canvas"></canvas>
+        </div>
+
+        <div class="controls-column">
+            <div class="action-buttons">
+                <button class="btn" id="flip-btn">Nút đảo ảnh từ trái sang phải</button>
+                <button class="btn" id="upload-btn">Nút thêm ảnh (chụp màn hình)</button>
+                <button class="btn" id="cross-copy-btn">Sao chéo</button>
+                <input type="file" id="file-input" accept="image/*">
+            </div>
+
+            <div class="function-buttons">
+                <button class="btn btn-func" onclick="addFunction('u', 2)">u(<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('d', 2)">d(<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('du', 3)">du(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('dd', 3)">dd(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('su', 2)">su(<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('sd', 2)">sd(<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('sus', 4)">sus(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('sds', 4)">sds(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('stairup', 3)">stairup(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('stairdown', 3)">stairdown(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('swaveup', 4)">swaveup(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('swavedown', 4)">swavedown(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('heartup', 3)">heartup(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('heartdown', 3)">heartdown(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('cup', 3)">cup(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('cdown', 3)">cdown(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('handlu', 3)">handlu(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('handld', 3)">handld(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('handru', 3)">handru(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+                <button class="btn btn-func" onclick="addFunction('handrd', 3)">handrd(<span class="box-param"></span>,<span class="box-param"></span>,<span class="box-param"></span>)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-panel">
+        <div class="player-indicator">
+            Khung nhập tham số hàm cho: <span class="player-badge" id="player-label">Chưa chọn NV</span>
+            Trạng thái: <span class="side-badge" id="side-label">Thuận</span>
+        </div>
+        <div class="input-wrapper">
+            <div class="command-input-container" id="cmd-container">
+                <span style="color:#aaa; font-size:0.85rem;" id="placeholder-cmd">Nhấn chọn các nút hàm bên trên...</span>
+            </div>
+            <button class="send-btn" id="send-btn" title="Chuyển thành hàm đầy đủ & Copy">
+                <svg viewBox="0 0 24 24">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+            </button>
+        </div>
+        <div class="result-box" id="result-box">Kết quả hàm hoàn chỉnh sẽ hiển thị ở đây và tự động Copy...</div>
+    </div>
+
+    <div class="toast" id="toast-msg">Đã copy</div>
+
+    <script>
+        // XỬ LÝ CHUỖI XUẤT HÀM ĐẦY ĐỦ CHO GAME: thay 'uh' thành *49/50, 'lh' thành *34/35
+        function prepareParamForGame(expr_str) {
+            if (!expr_str || typeof expr_str !== 'string') return expr_str;
+            let s = expr_str.trim();
+            if (s === '') return s;
+
+            // Thay thế uh và lh bằng tỷ lệ tương ứng
+            s = s.replace(/(?<=[\d\)\s])uh/gi, '*49/50');
+            s = s.replace(/^uh$/gi, '49/50');
+            s = s.replace(/(?<=[\d\)\s])lh/gi, '*34/35');
+            s = s.replace(/^lh$/gi, '34/35');
+
+            return s;
+        }
+
+        // TÍNH TOÁN DÙNG CHO VẼ CANVAS (Luôn nhân tỷ lệ bù co giãn game)
+        function parseInputValCanvas(inpVal, isUpperHalf = true) {
+            if (!inpVal || typeof inpVal !== 'string') return 0;
+
+            let s = inpVal.trim();
+            if (s === '') return 0;
+
+            // Normal Canvas numeric parser.
+            // IMPORTANT: plain numbers are NOT automatically scaled.
+            s = s.replace(/\buh\b/gi, '(49/50)');
+            s = s.replace(/\blh\b/gi, '(34/35)');
+
+            try {
+                if (!/^[0-9.+\-*/()\s]+$/.test(s)) return 0;
+                const val = Function(`"use strict"; return (${s})`)();
+                return Number.isFinite(val) ? val : 0;
+            } catch (e) {
+                return 0;
+            }
+        }
+
+        // Split an additive expression into terms such as:
+        //   8uh+9lh
+        //   5lh+6
+        // while respecting parentheses.
+        function splitVerticalTerms(expr) {
+            const s = String(expr ?? '').trim();
+            const terms = [];
+            let start = 0;
+            let depth = 0;
+
+            for (let i = 0; i < s.length; i++) {
+                const ch = s[i];
+
+                if (ch === '(') depth++;
+                else if (ch === ')') depth--;
+
+                if (depth === 0 && (ch === '+' || ch === '-') && i > start) {
+                    // Do not split an exponent-like or unary minus directly
+                    // after another operator.
+                    const prev = s[i - 1];
+                    if (prev !== '+' && prev !== '-' && prev !== '*' && prev !== '/') {
+                        terms.push(s.slice(start, i));
+                        start = i;
+                    }
+                }
+            }
+
+            if (start < s.length) terms.push(s.slice(start));
+            return terms.filter(t => t.trim() !== '');
+        }
+
+        function evaluatePlainNumber(expr) {
+            let s = String(expr ?? '').trim();
+            if (!s) return 0;
+
+            try {
+                if (!/^[0-9.+\-*/()\s]+$/.test(s)) return NaN;
+                const val = Function(`"use strict"; return (${s})`)();
+                return Number.isFinite(val) ? val : NaN;
+            } catch (e) {
+                return NaN;
+            }
+        }
+
+        /*
+         * Convert a vertical parameter into REAL SCREEN ROWS.
+         *
+         * Rules:
+         *   - plain number: Graphwar coordinate units
+         *       above Ox: 1 coordinate unit = 50/49 rows
+         *       below Ox: 1 coordinate unit = 35/34 rows
+         *   - uh: physical rows above Ox => 1:1 row
+         *   - lh: physical rows below Ox => 1:1 row
+         *
+         * Terms are processed from left to right so that:
+         *   y=-5, 5lh+6
+         * first reaches Ox with 5lh, then interprets plain 6 above Ox.
+         */
+        function evaluateVerticalRows(expr, startY, direction) {
+            const terms = splitVerticalTerms(expr);
+            let currentY = startY;
+            let totalRows = 0;
+
+            for (let rawTerm of terms) {
+                let term = rawTerm.trim();
+                if (!term) continue;
+
+                let sign = 1;
+                if (term[0] === '+') term = term.slice(1).trim();
+                else if (term[0] === '-') {
+                    sign = -1;
+                    term = term.slice(1).trim();
+                }
+
+                let suffix = null;
+                const suffixMatch = term.match(/(uh|lh)\s*$/i);
+                if (suffixMatch) {
+                    suffix = suffixMatch[1].toLowerCase();
+                    term = term.slice(0, suffixMatch.index).trim();
+                    if (!term) term = '1';
+                }
+
+                const value = evaluatePlainNumber(term);
+                if (!Number.isFinite(value)) continue;
+
+                let rows;
+
+                if (suffix === 'uh' || suffix === 'lh') {
+                    // Explicit physical-row unit.
+                    rows = Math.abs(value);
+                } else {
+                    // Plain Graphwar coordinate units.
+                    const rowsPerCoordinate =
+                        currentY >= 0 ? (50 / 49) : (35 / 34);
+                    rows = Math.abs(value) * rowsPerCoordinate;
+                }
+
+                const moveDirection = direction * sign;
+                const newY = moveByPhysicalRows(currentY, rows, moveDirection);
+
+                totalRows += Math.abs(newY - currentY) > 0 ? rows : 0;
+                currentY = newY;
+            }
+
+            // For normal positive height parameters, totalRows is the physical
+            // distance represented by the expression.
+            return totalRows;
+        }
+
+        // Move a Graphwar y-coordinate by a number of REAL screen rows.
+        // This is the key correction: crossing Ox changes the row/coordinate
+        // conversion. The coordinate labels themselves stay ordinary
+        // Graphwar coordinates.
+        function moveByPhysicalRows(startY, rows, direction) {
+            if (!Number.isFinite(rows) || rows <= 0 || direction === 0) {
+                return startY;
+            }
+
+            let y = startY;
+            let remaining = rows;
+
+            if (direction < 0) {
+                // Moving down.
+                if (y > 0) {
+                    const rowsToOx = y; // y=8 is exactly 8 screen rows from Ox.
+                    if (remaining <= rowsToOx) {
+                        return y - remaining;
+                    }
+
+                    remaining -= rowsToOx;
+                    return -(remaining);
+                }
+
+                return y - remaining;
+            }
+
+            // Moving up.
+            if (y < 0) {
+                const rowsToOx = -y;
+                if (remaining <= rowsToOx) {
+                    return y + remaining;
+                }
+
+                remaining -= rowsToOx;
+                return remaining;
+            }
+
+            return y + remaining;
+        }
+
+        // Convert a Graphwar-coordinate vertical delta into real screen rows
+        // at the current side of Ox.
+        function graphDeltaToRows(delta, currentY) {
+            if (!Number.isFinite(delta)) return 0;
+            return Math.abs(delta) *
+                (currentY >= 0 ? (50 / 49) : (35 / 34));
+        }
+
+        // Convert a physical-row height into an ordinary Graphwar-coordinate
+        // magnitude for shape formulas that require a coordinate parameter.
+        function rowsToGraphMagnitude(rows, currentY) {
+            if (!Number.isFinite(rows)) return 0;
+            return Math.abs(rows) *
+                (currentY >= 0 ? (49 / 50) : (34 / 35));
+        }
+
+        function dinh_dang_so(val) {
+            let num = parseFloat(val);
+            if (isNaN(num)) return val;
+            let val_rounded = Math.round(num * 10000) / 10000;
+            if (val_rounded === Math.floor(val_rounded)) return Math.floor(val_rounded).toString();
+            return val_rounded.toString();
+        }
+
+        function xu_ly_dau_chuoi(tham_so_str) {
+            let s = String(tham_so_str).trim();
+            if (s.startsWith('-')) return "+" + s.slice(1);
+            else return "-" + s;
+        }
+
+        function xu_ly_phep_tru(b_str, c_str) {
+            let b = String(b_str).trim();
+            let c = String(c_str).trim();
+            if (c.startsWith('-')) return `${b}+${c.slice(1)}`;
+            else return `${b}-${c}`;
+        }
+
+        function u(khoang_cach, x_val) { return `(${khoang_cach})/(1+exp(-99(x${xu_ly_dau_chuoi(x_val)})))`; }
+        function d(khoang_cach, x_val) { return `-(${khoang_cach})/(1+exp(-99(x${xu_ly_dau_chuoi(x_val)})))`; }
+        
+        function du(a, b, c) { 
+            let x_b = `(x${xu_ly_dau_chuoi(b)})`;
+            let x_c = `(x${xu_ly_dau_chuoi(c)})`;
+            let b_tru_c = xu_ly_phep_tru(c, b);
+            return `0.5*(${a})*(${x_b}+abs(${x_b}) - (${x_c}+abs(${x_c})))/(${b_tru_c})`; 
+        }
+        function dd(a, b, c) { return `-${du(a, b, c)}`; }
+
+        function su(h, a) { return `(1.2*(${h}))/(1+(99*(x${xu_ly_dau_chuoi(a)}))^2)`; }
+        function sd(h, a) { return `-(1.2*(${h}))/(1+(99*(x${xu_ly_dau_chuoi(a)}))^2)`; }
+
+        function heartup(H, a, b) {
+            let mid = `(${a}+${b})/2`;
+            let radius = `(${xu_ly_phep_tru(b, a)})/2`;
+            let normX = `(x - (${mid}))/(${radius})`;
+            let x_mid = `x - (${mid})`;
+            return `((${H}) * (sqrt(1 - (${normX})^2 + abs(1 - (${normX})^2))/sqrt(2)) + sqrt(abs(${x_mid}))) * (1 / (1 + exp(-99*(x${xu_ly_dau_chuoi(a)})))) * (1 / (1 + exp(99*(x${xu_ly_dau_chuoi(b)}))))`;
+        }
+        function heartdown(H, a, b) { return `-${heartup(H, a, b)}`; }
+
+        function cup(h, a, b) {
+            let b_tru_a = xu_ly_phep_tru(b, a);
+            let a_cong_b = !String(b).startsWith('-') ? `${a}+${b}` : `${a}-${String(b).slice(1)}`;
+            let R = `(4*(${h})^2 + (${b_tru_a})^2)/(8*(${h}))`;
+            let X = `x - (${a_cong_b})/2`;
+            let x_tru_a = `x${xu_ly_dau_chuoi(a)}`;
+            let x_tru_b = `x${xu_ly_dau_chuoi(b)}`;
+            return `(sqrt(((${R})^2 - (${X})^2 + abs((${R})^2 - (${X})^2)) / 2) + (${h}) - (${R})) * (1 / (1 + exp(-99*(${x_tru_a})))) * (1 / (1 + exp(99*(${x_tru_b}))))`;
+        }
+        function cdown(h, a, b) { return `-${cup(h, a, b)}`; }
+
+        function handlu(h, a, b) {
+            let b_tru_a = xu_ly_phep_tru(b, a);
+            let x_tru_a = xu_ly_phep_tru("x", a);
+            let base = `(1.1*(${x_tru_a})/(${b_tru_a}))`;
+            return `(${h}) * ( 0.6 / (1 + exp(-99 * ${base})) - 0.45 / (1 + exp(-69 * (${base} - 0.17))) + 0.85 / (1 + exp(-69 * (${base} - 0.3))) - 0.7 / (1 + exp(-69 * (${base} - 0.47))) + 0.3 / (1 + exp(-69 * (${base} - 0.52))) - 0.25 / (1 + exp(-69 * (${base} - 0.67))) + 0.2 / (1 + exp(-69 * (${base} - 0.75))) - 0.25 / (1 + exp(-69 * (${base} - 0.9))) + 0.15 / (1 + exp(-69 * (${base} - 1))) - 0.45 / (1 + exp(-99 * (${base} - 1.1))) )`;
+        }
+        function handld(h, a, b) { return `-${handlu(h, a, b)}`; }
+        function handru(h, a, b) {
+            let b_tru_a = xu_ly_phep_tru(b, a);
+            let b_tru_x = xu_ly_phep_tru(b, "x");
+            let base = `(1.1*(${b_tru_x})/(${b_tru_a}))`;
+            return `(${h}) * ( 0.6 / (1 + exp(-99 * ${base})) - 0.45 / (1 + exp(-69 * (${base} - 0.17))) + 0.85 / (1 + exp(-69 * (${base} - 0.3))) - 0.7 / (1 + exp(-69 * (${base} - 0.47))) + 0.3 / (1 + exp(-69 * (${base} - 0.52))) - 0.25 / (1 + exp(-69 * (${base} - 0.67))) + 0.2 / (1 + exp(-69 * (${base} - 0.75))) - 0.25 / (1 + exp(-69 * (${base} - 0.9))) + 0.15 / (1 + exp(-69 * (${base} - 1))) - 0.45 / (1 + exp(-99 * (${base} - 1.1))) )`;
+        }
+        function handrd(h, a, b) { return `-${handru(h, a, b)}`; }
+
+        function sds(a, b, c, d_val) {
+            let list = [], so_lan = parseInt(c) || 0, val_b = parseFloat(b), val_d = parseFloat(d_val);
+            for (let n = 0; n < so_lan; n++) {
+                let vi_tri = !isNaN(val_b) && !isNaN(val_d) ? val_b + val_d * n : `${b}+${d_val}*${n}`;
+                list.push(sd(a, dinh_dang_so(vi_tri)));
+            }
+            return list.join(" + ");
+        }
+        function sus(a, b, c, d_val) {
+            let list = [], so_lan = parseInt(c) || 0, val_b = parseFloat(b), val_d = parseFloat(d_val);
+            for (let n = 0; n < so_lan; n++) {
+                let vi_tri = !isNaN(val_b) && !isNaN(val_d) ? val_b + val_d * n : `${b}+${d_val}*${n}`;
+                list.push(su(a, dinh_dang_so(vi_tri)));
+            }
+            return list.join(" + ");
+        }
+        function stairup(a, b, c) {
+            let list = [], so_lan = parseInt(c) || 0, val_b = parseFloat(b);
+            for (let n = 0; n < so_lan; n++) {
+                let vi_tri = !isNaN(val_b) ? val_b + n : `${b}+${n}`;
+                list.push(u(a, dinh_dang_so(vi_tri)));
+            }
+            return list.join(" + ");
+        }
+        function stairdown(a, b, c) {
+            let list = [], so_lan = parseInt(c) || 0, val_b = parseFloat(b);
+            for (let n = 0; n < so_lan; n++) {
+                let vi_tri = !isNaN(val_b) ? val_b + n : `${b}+${n}`;
+                list.push(d(a, dinh_dang_so(vi_tri)));
+            }
+            return list.join(" + ");
+        }
+        function swaveup(a, b, c, d_val) {
+            let list = [], so_lan = parseInt(c) || 0, val_b = parseFloat(b), val_d = parseFloat(d_val);
+            for (let i = 0; i < so_lan; i++) {
+                let pos_u = !isNaN(val_b) && !isNaN(val_d) ? val_b + (2 * i) * val_d : `${b}+(${2*i}*${d_val})`;
+                let pos_d = !isNaN(val_b) && !isNaN(val_d) ? val_b + (2 * i + 1) * val_d : `${b}+(${2*i+1}*${d_val})`;
+                list.push(u(a, dinh_dang_so(pos_u)));
+                list.push(d(a, dinh_dang_so(pos_d)));
+            }
+            return list.join(" + ");
+        }
+        function swavedown(a, b, c, d_val) {
+            let list = [], so_lan = parseInt(c) || 0, val_b = parseFloat(b), val_d = parseFloat(d_val);
+            for (let i = 0; i < so_lan; i++) {
+                let pos_d = !isNaN(val_b) && !isNaN(val_d) ? val_b + (2 * i) * val_d : `${b}+(${2*i}*${d_val})`;
+                let pos_u = !isNaN(val_b) && !isNaN(val_d) ? val_b + (2 * i + 1) * val_d : `${b}+(${2*i+1}*${d_val})`;
+                list.push(d(a, dinh_dang_so(pos_d)));
+                list.push(u(a, dinh_dang_so(pos_u)));
+            }
+            return list.join(" + ");
+        }
+
+        const BANG_HAM = {
+            u, d, du, dd, su, sd, sds, sus, stairup, stairdown, swaveup, swavedown,
+            heartup, heartdown, cup, cdown, handlu, handld, handru, handrd
+        };
+
+        const playerCommandsStore = {}; 
+        let isFlipped = false; 
+
+        const cmdContainer = document.getElementById('cmd-container');
+        const sendBtn = document.getElementById('send-btn');
+        const resultBox = document.getElementById('result-box');
+        const playerLabel = document.getElementById('player-label');
+        const sideLabel = document.getElementById('side-label');
+        const toastMsg = document.getElementById('toast-msg');
+
+        let activeFunctions = []; 
+
+        function getStoreKey(index) {
+            return `${isFlipped ? 'nghich' : 'thuan'}_${index}`;
+        }
+
+        function showToast(text) {
+            toastMsg.innerText = text;
+            toastMsg.classList.remove('fade-out');
+            toastMsg.classList.add('show');
+
+            setTimeout(() => {
+                toastMsg.classList.add('fade-out');
+                setTimeout(() => {
+                    toastMsg.classList.remove('show', 'fade-out');
+                }, 400);
+            }, 1000);
+        }
+
+        function saveCurrentPlayerState() {
+            if (selectedPlayerIndex === -1) return;
+            
+            let funcListState = activeFunctions.map(item => {
+                return {
+                    name: item.name,
+                    values: item.inputs.map(inp => inp.value)
+                };
+            });
+
+            const key = getStoreKey(selectedPlayerIndex);
+            playerCommandsStore[key] = {
+                functions: funcListState,
+                resultText: resultBox.innerText
+            };
+        }
+
+        function rebuildUIFromActiveFunctions() {
+            cmdContainer.innerHTML = '';
+            if (activeFunctions.length === 0) {
+                cmdContainer.innerHTML = '<span style="color:#aaa; font-size:0.85rem;" id="placeholder-cmd">Nhấn chọn các nút hàm bên trên...</span>';
+                resultBox.innerText = "Kết quả hàm hoàn chỉnh sẽ hiển thị ở đây và tự động Copy...";
+                saveCurrentPlayerState();
+                renderScene();
+                return;
+            }
+
+            activeFunctions.forEach((funcObj, index) => {
+                if (index > 0) {
+                    const plusText = document.createElement('span');
+                    plusText.innerText = " + ";
+                    plusText.style.fontWeight = "bold";
+                    cmdContainer.appendChild(plusText);
+                }
+                cmdContainer.appendChild(funcObj.wrapper);
+            });
+            saveCurrentPlayerState();
+            renderScene();
+        }
+
+        function removeFunctionObject(funcObj) {
+            const index = activeFunctions.indexOf(funcObj);
+            if (index !== -1) {
+                activeFunctions.splice(index, 1);
+                rebuildUIFromActiveFunctions();
+                showToast("Đã xóa hàm!");
+            }
+        }
+
+        function loadPlayerState(index) {
+            cmdContainer.innerHTML = '';
+            activeFunctions = [];
+
+            sideLabel.innerText = isFlipped ? "Nghịch" : "Thuận";
+            sideLabel.style.backgroundColor = isFlipped ? "#e67e22" : "#8e44ad";
+
+            if (index === -1) {
+                playerLabel.innerText = "Chưa chọn NV";
+                cmdContainer.innerHTML = '<span style="color:#aaa; font-size:0.85rem;" id="placeholder-cmd">Vui lòng chọn nhân vật trên ảnh...</span>';
+                resultBox.innerText = "Chưa chọn nhân vật...";
+                renderScene();
+                return;
+            }
+
+            playerLabel.innerText = `Nhân vật ${index + 1}`;
+
+            const key = getStoreKey(index);
+            const savedState = playerCommandsStore[key];
+            if (!savedState || savedState.functions.length === 0) {
+                cmdContainer.innerHTML = '<span style="color:#aaa; font-size:0.85rem;" id="placeholder-cmd">Nhấn chọn các nút hàm bên trên...</span>';
+                resultBox.innerText = "Kết quả hàm hoàn chỉnh sẽ hiển thị ở đây và tự động Copy...";
+                renderScene();
+                return;
+            }
+
+            resultBox.innerText = savedState.resultText || "Kết quả hàm hoàn chỉnh sẽ hiển thị ở đây...";
+
+            savedState.functions.forEach((funcData) => {
+                renderFunctionInUI(funcData.name, funcData.values.length, funcData.values);
+            });
+            renderScene();
+        }
+
+        function renderFunctionInUI(funcName, paramCount, initialValues = []) {
+            const placeholderCmd = document.getElementById('placeholder-cmd');
+            if (placeholderCmd) placeholderCmd.remove();
+
+            if (cmdContainer.children.length > 0) {
+                const plusText = document.createElement('span');
+                plusText.innerText = " + ";
+                plusText.style.fontWeight = "bold";
+                cmdContainer.appendChild(plusText);
+            }
+
+            const funcWrapper = document.createElement('span');
+            funcWrapper.className = 'func-wrapper';
+            funcWrapper.style.display = 'inline-flex';
+            funcWrapper.style.alignItems = 'center';
+            funcWrapper.style.gap = '2px';
+            funcWrapper.style.fontWeight = 'bold';
+            funcWrapper.style.fontFamily = 'monospace';
+
+            funcWrapper.appendChild(document.createTextNode(`${funcName}(`));
+
+            const funcObj = { name: funcName, inputs: [], wrapper: funcWrapper };
+
+            const inputs = [];
+            for (let i = 0; i < paramCount; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'param-input';
+                if (initialValues[i] !== undefined) {
+                    input.value = initialValues[i];
+                }
+                
+                input.addEventListener('input', () => {
+                    saveCurrentPlayerState();
+                    renderScene();
+                });
+
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === '\\') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeFunctionObject(funcObj);
+                        return;
+                    }
+
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const allInputs = Array.from(cmdContainer.querySelectorAll('.param-input'));
+                        const currentIndex = allInputs.indexOf(input);
+                        if (currentIndex !== -1 && currentIndex < allInputs.length - 1) {
+                            const nextInput = allInputs[currentIndex + 1];
+                            nextInput.focus();
+                            nextInput.select();
+                        }
+                    }
+                });
+
+                input.addEventListener('focus', () => {
+                    input.select();
+                });
+
+                funcWrapper.appendChild(input);
+                inputs.push(input);
+
+                if (i < paramCount - 1) {
+                    funcWrapper.appendChild(document.createTextNode(', '));
+                }
+            }
+
+            funcWrapper.appendChild(document.createTextNode(')'));
+            cmdContainer.appendChild(funcWrapper);
+
+            funcObj.inputs = inputs;
+            activeFunctions.push(funcObj);
+            return inputs;
+        }
+
+        function addFunction(funcName, paramCount) {
+            if (selectedPlayerIndex === -1) {
+                showToast("⚠️ Hãy tải ảnh và chọn nhân vật trước!");
+                return;
+            }
+            const inputs = renderFunctionInUI(funcName, paramCount);
+            if (inputs.length > 0) {
+                inputs[0].focus();
+                inputs[0].select();
+            }
+            saveCurrentPlayerState();
+            renderScene();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '\\') {
+                if (document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    if (activeFunctions.length > 0) {
+                        removeFunctionObject(activeFunctions[activeFunctions.length - 1]);
+                    }
+                }
+            }
+        });
+
+        // TẠO HÀM ĐẦY ĐỦ KHI NHẤN NÚT
+        sendBtn.addEventListener('click', () => {
+            if (selectedPlayerIndex === -1) {
+                showToast("⚠️ Vui lòng chọn nhân vật!");
+                return;
+            }
+
+            if (activeFunctions.length === 0) {
+                showToast("⚠️ Chưa có hàm nào!");
+                return;
+            }
+
+            let fullResults = [];
+
+            for (let item of activeFunctions) {
+                // Biến đổi 'uh' và 'lh' thành *49/50 và *34/35 cho hàm đầy đủ
+                const excludedFunctions = ['su', 'sd', 'sus', 'sds'];
+
+                let params = item.inputs.map(inp => {
+                    if (excludedFunctions.includes(item.name)) {
+                        return inp.value.trim();
+                    }
+                    return prepareParamForGame(inp.value);
+                });
+
+                if (params.some(p => p === "")) {
+                    showToast("❌ Hãy nhập đủ tham số!");
+                    return;
+                }
+
+                if (BANG_HAM[item.name]) {
+                    let compiled = BANG_HAM[item.name](...params);
+                    fullResults.push(compiled);
+                }
+            }
+
+            let finalEquation = fullResults.join(" + ");
+            resultBox.innerText = finalEquation;
+            saveCurrentPlayerState();
+
+            navigator.clipboard.writeText(finalEquation).then(() => {
+                showToast("Đã copy");
+            }).catch(() => {
+                showToast("Lỗi khi Copy!");
+            });
+        });
+
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('file-input');
+        const flipBtn = document.getElementById('flip-btn');
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const placeholderText = document.getElementById('placeholder-text');
+
+        let rawImgCanvas = null; 
+        let detectedPlayers = []; 
+        let selectedPlayerIndex = -1;
+        let crossCopyMode = false;
+        let crossCopySourceIndex = -1;
+        let crossCopySourceKey = null;
+     
+
+
+        // ================================================================
+        // SAO CHÉO
+        // Khi bật chế độ này, nhân vật đang được chọn là NGUỒN.
+        // Sau đó click vào một nhân vật khác trên ảnh:
+        //   - Xóa toàn bộ hàm của nhân vật đích.
+        //   - Chép toàn bộ hàm + giá trị tham số từ nhân vật nguồn.
+        //   - Chép cả kết quả hàm đã tạo.
+        // Chế độ tự tắt sau một lần sao chép.
+        // ================================================================
+        const crossCopyBtn = document.getElementById('cross-copy-btn');
+
+        function setCrossCopyMode(enabled) {
+            crossCopyMode = enabled;
+
+            if (crossCopyBtn) {
+                crossCopyBtn.classList.toggle('cross-copy-active', enabled);
+                crossCopyBtn.innerText = enabled ? 'Sao chéo (đang chọn)' : 'Sao chéo';
+            }
+        }
+
+        crossCopyBtn.addEventListener('click', () => {
+            if (selectedPlayerIndex === -1) {
+                showToast("⚠️ Hãy chọn nhân vật nguồn trước!");
+                return;
+            }
+
+            // Lưu chính xác những gì đang viết trước khi chọn đích.
+            saveCurrentPlayerState();
+
+            crossCopySourceIndex = selectedPlayerIndex;
+            crossCopySourceKey = getStoreKey(selectedPlayerIndex);
+            setCrossCopyMode(true);
+
+            showToast(`Đã chọn NV ${selectedPlayerIndex + 1} làm nguồn`);
+        });
+
+        function performCrossCopy(targetIndex) {
+            if (!crossCopyMode || crossCopySourceIndex === -1) return false;
+
+            if (targetIndex === crossCopySourceIndex) {
+                showToast("⚠️ Hãy chọn một nhân vật khác!");
+                return true;
+            }
+
+            // Lấy dữ liệu nguồn đã được lưu ngay lúc bật Sao chéo.
+            const sourceState = playerCommandsStore[crossCopySourceKey];
+
+            if (!sourceState) {
+                showToast("⚠️ Nhân vật nguồn chưa có hàm nào!");
+                setCrossCopyMode(false);
+                crossCopySourceIndex = -1;
+                crossCopySourceKey = null;
+                return true;
+            }
+
+            // Deep copy để nguồn và đích không dùng chung object/array.
+            const copiedFunctions = sourceState.functions.map(func => ({
+                name: func.name,
+                values: [...func.values]
+            }));
+
+            playerCommandsStore[getStoreKey(targetIndex)] = {
+                functions: copiedFunctions,
+                resultText: sourceState.resultText || ""
+            };
+
+            // Lưu tên nguồn/đích trước khi reset chế độ.
+            const sourceLabel = crossCopySourceIndex + 1;
+            const targetLabel = targetIndex + 1;
+
+            // Chuyển sang nhân vật đích và dựng lại toàn bộ giao diện.
+            selectedPlayerIndex = targetIndex;
+            setCrossCopyMode(false);
+            crossCopySourceIndex = -1;
+            crossCopySourceKey = null;
+
+            loadPlayerState(selectedPlayerIndex);
+            renderScene();
+
+            showToast(`Đã sao chép toàn bộ hàm từ NV ${sourceLabel} sang NV ${targetLabel}`);
+            return true;
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            try {
+                if (navigator.clipboard && navigator.clipboard.read) {
+                    const clipboardItems = await navigator.clipboard.read();
+                    let imageFound = false;
+                    for (const item of clipboardItems) {
+                        const imageType = item.types.find(type => type.startsWith('image/'));
+                        if (imageType) {
+                            const blob = await item.getType(imageType);
+                            processImageBlob(blob);
+                            imageFound = true;
+                            break;
+                        }
+                    }
+                    if (!imageFound) fileInput.click();
+                } else {
+                    fileInput.click();
+                }
+            } catch (err) {
+                fileInput.click();
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) processImageBlob(file);
+        });
+
+        window.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            for (let item of items) {
+                if (item.type.indexOf('image') !== -1) {
+                    processImageBlob(item.getAsFile());
+                    break;
+                }
+            }
+        });
+
+        flipBtn.addEventListener('click', () => {
+            if (!rawImgCanvas) return;
+            
+            saveCurrentPlayerState();
+            isFlipped = !isFlipped;
+
+            const flippedCanvas = document.createElement('canvas');
+            flippedCanvas.width = rawImgCanvas.width;
+            flippedCanvas.height = rawImgCanvas.height;
+            const fCtx = flippedCanvas.getContext('2d');
+            fCtx.translate(rawImgCanvas.width, 0);
+            fCtx.scale(-1, 1);
+            fCtx.drawImage(rawImgCanvas, 0, 0);
+            rawImgCanvas = flippedCanvas;
+            
+            autoDetectExactPlayers(rawImgCanvas);
+            renderScene();
+        });
+
+        function processImageBlob(blob) {
+            const img = new Image();
+            img.onload = () => cropAndDrawGameArea(img);
+            img.src = URL.createObjectURL(blob);
+        }
+
+        function cropAndDrawGameArea(img) {
+            const cropLeft = 15, cropRight = 786, cropTop = 52, cropBottom = 503;
+            const cropWidth = cropRight - cropLeft;   
+            const cropHeight = cropBottom - cropTop; 
+
+            rawImgCanvas = document.createElement('canvas');
+            rawImgCanvas.width = cropWidth;
+            rawImgCanvas.height = cropHeight;
+
+            const rawCtx = rawImgCanvas.getContext('2d');
+            rawCtx.drawImage(img, cropLeft, cropTop, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
+            canvas.width = cropWidth;
+            canvas.height = cropHeight;
+
+            for (let key in playerCommandsStore) delete playerCommandsStore[key];
+            isFlipped = false;
+            setCrossCopyMode(false);
+            crossCopySourceIndex = -1;
+            crossCopySourceKey = null;
+
+            autoDetectExactPlayers(rawImgCanvas);
+            renderScene();
+
+            canvas.style.display = 'block';
+            placeholderText.style.display = 'none';
+        }
+
+        function autoDetectExactPlayers(srcCanvas) {
+            detectedPlayers = [];
+
+            const w = srcCanvas.width;
+            const h = srcCanvas.height;
+            const scanW = Math.floor(w / 2);
+            const ctxRaw = srcCanvas.getContext('2d');
+            const imgData = ctxRaw.getImageData(0, 0, scanW, h);
+            const data = imgData.data;
+            const brightPixels = [];
+
+            /*
+             * Chỉ nhận diện phần màu VÀNG đặc trưng của nhân vật.
+             *
+             * Bản cũ còn nhận cả pixel ĐỎ:
+             *   (r > 210 && g < 70 && b < 70)
+             *
+             * nên viền/tên nhân vật màu đỏ cũng bị coi là nhân vật,
+             * dẫn đến vòng tròn xanh xuất hiện quanh chữ.
+             */
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < scanW; x++) {
+                    const idx = (y * scanW + x) * 4;
+                    const r = data[idx];
+                    const g = data[idx + 1];
+                    const b = data[idx + 2];
+
+                    // Vàng sáng của vòng/viền nhân vật.
+                    if (r > 200 && g > 170 && b < 125) {
+                        brightPixels.push({ x, y });
+                    }
+                }
+            }
+
+            const clusters = [];
+
+            brightPixels.forEach(p => {
+                let bestCluster = null;
+                let bestDistance = Infinity;
+
+                for (const c of clusters) {
+                    const distance = Math.hypot(
+                        c.centerX - p.x,
+                        c.centerY - p.y
+                    );
+
+                    if (distance < 13 && distance < bestDistance) {
+                        bestCluster = c;
+                        bestDistance = distance;
+                    }
+                }
+
+                if (bestCluster) {
+                    bestCluster.minX = Math.min(bestCluster.minX, p.x);
+                    bestCluster.maxX = Math.max(bestCluster.maxX, p.x);
+                    bestCluster.minY = Math.min(bestCluster.minY, p.y);
+                    bestCluster.maxY = Math.max(bestCluster.maxY, p.y);
+
+                    bestCluster.centerX =
+                        (bestCluster.minX + bestCluster.maxX) / 2;
+                    bestCluster.centerY =
+                        (bestCluster.minY + bestCluster.maxY) / 2;
+
+                    bestCluster.count++;
+                } else {
+                    clusters.push({
+                        minX: p.x,
+                        maxX: p.x,
+                        minY: p.y,
+                        maxY: p.y,
+                        centerX: p.x,
+                        centerY: p.y,
+                        count: 1
+                    });
+                }
+            });
+
+            /*
+             * Nhân vật trong ảnh có đường kính khoảng 20-22 px.
+             * radius 11.5 giúp vòng xanh ôm trọn nhân vật.
+             */
+            clusters
+                .filter(c =>
+                    c.count >= 8 &&
+                    (c.maxX - c.minX) <= 24 &&
+                    (c.maxY - c.minY) <= 24 &&
+                    c.centerX < scanW
+                )
+                .forEach(c => {
+                    detectedPlayers.push({
+                        x: c.centerX,
+                        y: c.centerY,
+                        radius: 8.5
+                    });
+                });
+
+            selectedPlayerIndex =
+                detectedPlayers.length > 0 ? 0 : -1;
+
+            loadPlayerState(selectedPlayerIndex);
+        }
+
+        function calculateGraphValue(xMath, baseAbsYMath) {
+            let currentY = baseAbsYMath;
+
+            const normal = (value) => {
+                const s = String(value ?? '').trim();
+                if (!s) return 0;
+                return evaluatePlainNumber(s) || 0;
+            };
+
+            const applyVerticalGraphDelta = (delta, direction) => {
+                if (!Number.isFinite(delta) || delta === 0) return;
+
+                // delta here is an ordinary Graphwar-coordinate magnitude.
+                // Convert it to real rows using the side of Ox where the
+                // movement begins, then move in physical rows.
+                const rows = graphDeltaToRows(delta, currentY);
+                currentY = moveByPhysicalRows(
+                    currentY,
+                    rows,
+                    direction
+                );
+            };
+
+            for (let funcObj of activeFunctions) {
+                const name = funcObj.name;
+
+                // ---------------------------------------------------------
+                // EXCLUDED: su / sd / sus / sds
+                // Their old behavior is preserved exactly.
+                // ---------------------------------------------------------
+                if (name === 'su' || name === 'sd') {
+                    const h = normal(funcObj.inputs[0].value);
+                    const a = normal(funcObj.inputs[1].value);
+                    const sign = name === 'su' ? 1 : -1;
+                    const width = 0.2;
+                    const dist = Math.abs(xMath - a);
+
+                    if (dist <= width) {
+                        const delta = sign * h * (1 - dist / width);
+                        currentY += delta;
+                    }
+                }
+
+                else if (name === 'sus' || name === 'sds') {
+                    const h = normal(funcObj.inputs[0].value);
+                    const b = normal(funcObj.inputs[1].value);
+                    const count = normal(funcObj.inputs[2].value);
+                    const step = normal(funcObj.inputs[3].value);
+                    const sign = name === 'sus' ? 1 : -1;
+                    const width = 0.2;
+
+                    for (let n = 0; n < count; n++) {
+                        const a = b + step * n;
+                        const dist = Math.abs(xMath - a);
+
+                        if (dist <= width) {
+                            currentY += sign * h * (1 - dist / width);
+                        }
+                    }
+                }
+
+                // ---------------------------------------------------------
+                // u / d
+                // ---------------------------------------------------------
+                else if (name === 'u' || name === 'd') {
+                    const direction = name === 'u' ? 1 : -1;
+                    const hRows = evaluateVerticalRows(
+                        funcObj.inputs[0].value,
+                        currentY,
+                        direction
+                    );
+                    const a = normal(funcObj.inputs[1].value);
+                    const sig = 1 / (1 + Math.exp(-99 * (xMath - a)));
+
+                    currentY = moveByPhysicalRows(
+                        currentY,
+                        hRows * sig,
+                        direction
+                    );
+                }
+
+                // ---------------------------------------------------------
+                // du / dd
+                // ---------------------------------------------------------
+                else if (name === 'du' || name === 'dd') {
+                    const direction = name === 'du' ? 1 : -1;
+                    const hRows = evaluateVerticalRows(
+                        funcObj.inputs[0].value,
+                        currentY,
+                        direction
+                    );
+                    const b = normal(funcObj.inputs[1].value);
+                    const c = normal(funcObj.inputs[2].value);
+
+                    if (b !== c) {
+                        const xb = xMath - b;
+                        const xc = xMath - c;
+                        const factor =
+                            0.5 * (xb + Math.abs(xb) - xc - Math.abs(xc)) /
+                            (c - b);
+
+                        currentY = moveByPhysicalRows(
+                            currentY,
+                            hRows * Math.abs(factor),
+                            direction * (factor >= 0 ? 1 : -1)
+                        );
+                    }
+                }
+
+                // ---------------------------------------------------------
+                // cup / cdown
+                // ---------------------------------------------------------
+                else if (name === 'cup' || name === 'cdown') {
+                    const direction = name === 'cup' ? 1 : -1;
+                    const hRows = evaluateVerticalRows(
+                        funcObj.inputs[0].value,
+                        currentY,
+                        direction
+                    );
+                    const h = rowsToGraphMagnitude(hRows, currentY);
+                    const a = normal(funcObj.inputs[1].value);
+                    const b = normal(funcObj.inputs[2].value);
+
+                    if (a < b && h !== 0) {
+                        const R = (4 * h * h + Math.pow(b - a, 2)) / (8 * h);
+                        const X = xMath - (a + b) / 2;
+                        const inner = R * R - X * X;
+
+                        if (inner >= 0) {
+                            const sigA = 1 / (1 + Math.exp(-99 * (xMath - a)));
+                            const sigB = 1 / (1 + Math.exp(99 * (xMath - b)));
+                            const shape = (Math.sqrt(inner) + h - R) * sigA * sigB;
+
+                            currentY = moveByPhysicalRows(
+                                currentY,
+                                graphDeltaToRows(Math.abs(shape), currentY),
+                                direction
+                            );
+                        }
+                    }
+                }
+
+                // ---------------------------------------------------------
+                // heartup / heartdown
+                // ---------------------------------------------------------
+                else if (name === 'heartup' || name === 'heartdown') {
+                    const direction = name === 'heartup' ? 1 : -1;
+                    const hRows = evaluateVerticalRows(
+                        funcObj.inputs[0].value,
+                        currentY,
+                        direction
+                    );
+                    const H = rowsToGraphMagnitude(hRows, currentY);
+                    const a = normal(funcObj.inputs[1].value);
+                    const b = normal(funcObj.inputs[2].value);
+
+                    if (a < b) {
+                        const mid = (a + b) / 2;
+                        const radius = (b - a) / 2;
+                        const normX = (xMath - mid) / radius;
+
+                        if (Math.abs(normX) <= 1) {
+                            const sigA = 1 / (1 + Math.exp(-99 * (xMath - a)));
+                            const sigB = 1 / (1 + Math.exp(99 * (xMath - b)));
+                            const shape =
+                                (H * Math.sqrt(1 - normX * normX) +
+                                 Math.sqrt(Math.abs(xMath - mid))) *
+                                sigA * sigB;
+
+                            currentY = moveByPhysicalRows(
+                                currentY,
+                                graphDeltaToRows(Math.abs(shape), currentY),
+                                direction
+                            );
+                        }
+                    }
+                }
+
+                // ---------------------------------------------------------
+                // stairup / stairdown
+                // ---------------------------------------------------------
+                else if (name === 'stairup' || name === 'stairdown') {
+                    const direction = name === 'stairup' ? 1 : -1;
+                    const hRows = evaluateVerticalRows(
+                        funcObj.inputs[0].value,
+                        currentY,
+                        direction
+                    );
+                    const b = normal(funcObj.inputs[1].value);
+                    const count = normal(funcObj.inputs[2].value);
+
+                    for (let n = 0; n < count; n++) {
+                        const a = b + n;
+                        const sig = 1 / (1 + Math.exp(-99 * (xMath - a)));
+
+                        currentY = moveByPhysicalRows(
+                            currentY,
+                            hRows * sig,
+                            direction
+                        );
+                    }
+                }
+
+                // ---------------------------------------------------------
+                // swaveup / swavedown
+                // ---------------------------------------------------------
+                else if (name === 'swaveup' || name === 'swavedown') {
+                    const direction = name === 'swaveup' ? 1 : -1;
+                    const hRows = evaluateVerticalRows(
+                        funcObj.inputs[0].value,
+                        currentY,
+                        direction
+                    );
+                    const b = normal(funcObj.inputs[1].value);
+                    const count = normal(funcObj.inputs[2].value);
+                    const step = normal(funcObj.inputs[3].value);
+
+                    for (let i = 0; i < count; i++) {
+                        const pos1 = b + (2 * i) * step;
+                        const pos2 = b + (2 * i + 1) * step;
+
+                        const sig1 = 1 / (1 + Math.exp(-99 * (xMath - pos1)));
+                        const sig2 = 1 / (1 + Math.exp(-99 * (xMath - pos2)));
+
+                        const amount = hRows * (sig1 - sig2);
+                        const moveDir = direction * (amount >= 0 ? 1 : -1);
+
+                        currentY = moveByPhysicalRows(
+                            currentY,
+                            Math.abs(amount),
+                            moveDir
+                        );
+                    }
+                }
+
+                // ---------------------------------------------------------
+                // hand*
+                // ---------------------------------------------------------
+                else if (name.startsWith('hand')) {
+                    const direction = name.endsWith('d') ? -1 : 1;
+                    const hRows = evaluateVerticalRows(
+                        funcObj.inputs[0].value,
+                        currentY,
+                        direction
+                    );
+                    const a = normal(funcObj.inputs[1].value);
+                    const b = normal(funcObj.inputs[2].value);
+
+                    if (a !== b) {
+                        const base = name.includes('r')
+                            ? (1.1 * (b - xMath) / (b - a))
+                            : (1.1 * (xMath - a) / (b - a));
+
+                        const sig = (shift, k = 69) =>
+                            1 / (1 + Math.exp(-k * (base - shift)));
+
+                        const handShape =
+                            0.6 * sig(0, 99) -
+                            0.45 * sig(0.17) +
+                            0.85 * sig(0.3) -
+                            0.7 * sig(0.47) +
+                            0.3 * sig(0.52) -
+                            0.25 * sig(0.67) +
+                            0.2 * sig(0.75) -
+                            0.25 * sig(0.9) +
+                            0.15 * sig(1) -
+                            0.45 * sig(1.1, 99);
+
+                        const amount = hRows * Math.abs(handShape);
+                        const moveDir =
+                            direction * (handShape >= 0 ? 1 : -1);
+
+                        currentY = moveByPhysicalRows(
+                            currentY,
+                            amount,
+                            moveDir
+                        );
+                    }
+                }
+            }
+
+            return currentY;
+        }
+
+        function renderScene() {
+            if (!rawImgCanvas) return;
+            const w = canvas.width, h = canvas.height;
+            ctx.drawImage(rawImgCanvas, 0, 0);
+
+            // The projectile is red. If its trajectory touches the top or
+            // bottom edge of the game area, that edge is highlighted green.
+            let projectileHitsTop = false;
+            let projectileHitsBottom = false;
+
+            const originX = w / 2, originY = h / 2;
+
+            for (let i = -25; i <= 25; i++) {
+                const x = (i + 25) / 50 * w;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                if (i !== 0) {
+                    ctx.strokeStyle = (i % 5 === 0) ? "rgba(46, 204, 113, 0.5)" : "rgba(180, 180, 180, 0.25)";
+                    ctx.lineWidth = (i % 5 === 0) ? 1.2 : 0.8;
+                    ctx.stroke();
+                }
+            }
+
+            for (let j = -15; j <= 15; j++) {
+                const y = (15 - j) / 30 * h;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                if (j !== 0) {
+                    ctx.strokeStyle = (j % 5 === 0) ? "rgba(46, 204, 113, 0.5)" : "rgba(180, 180, 180, 0.25)";
+                    ctx.lineWidth = (j % 5 === 0) ? 1.2 : 0.8;
+                    ctx.stroke();
+                }
+            }
+
+            ctx.fillStyle = "rgba(231, 76, 60, 0.5)";
+            ctx.font = "bold 11px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "top";
+            for (let i = -25; i <= 25; i += 5) {
+                if (i === 0) continue; 
+                const x = (i + 25) / 50 * w;
+                ctx.fillText(i.toString(), x, originY + 3);
+            }
+
+            ctx.textAlign = "right";
+            ctx.textBaseline = "middle";
+            for (let j = -15; j <= 15; j += 5) {
+                if (j === 0) continue; 
+                const y = (15 - j) / 30 * h;
+                ctx.fillText(j.toString(), originX - 4, y);
+            }
+
+            if (selectedPlayerIndex !== -1 && detectedPlayers[selectedPlayerIndex]) {
+                const activePlayer = detectedPlayers[selectedPlayerIndex];
+                let startYMath = (originY - activePlayer.y) / (h / 30);
+
+                ctx.beginPath();
+                ctx.strokeStyle = "rgba(231, 76, 60, 0.4)";
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.moveTo(0, activePlayer.y);
+                ctx.lineTo(w, activePlayer.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.beginPath();
+                ctx.strokeStyle = "rgba(255, 30, 30, 0.95)";
+                ctx.lineWidth = 1.25;
+
+                let criticalXMaths = [];
+                for (let funcObj of activeFunctions) {
+                    if (['su', 'sd'].includes(funcObj.name)) {
+                        criticalXMaths.push(parseInputValCanvas(funcObj.inputs[1].value));
+                    } else if (['sus', 'sds'].includes(funcObj.name)) {
+                        let b = parseInputValCanvas(funcObj.inputs[1].value);
+                        let count = parseInputValCanvas(funcObj.inputs[2].value);
+                        let step = parseInputValCanvas(funcObj.inputs[3].value);
+                        for (let n = 0; n < count; n++) criticalXMaths.push(b + step * n);
+                    }
+                }
+
+                let criticalPixels = criticalXMaths.map(xm => (xm * (w / 50)) + originX).filter(px => px >= 0 && px <= w);
+
+                let isFirstPoint = true;
+                let previousPy = null;
+
+                for (let px = 0; px <= w; px += 1) {
+                    let extraPx = criticalPixels.filter(cpx => cpx > px && cpx < px + 1);
+                    extraPx.sort((a, b) => a - b);
+
+                    let ptsToDraw = [px, ...extraPx];
+
+                    for (let currentPx of ptsToDraw) {
+                        let xMath = (currentPx - originX) / (w / 50);
+                        let yMath = calculateGraphValue(xMath, startYMath);
+                        let py = originY - (yMath * (h / 30));
+
+                        // Detect both direct contact and a segment crossing
+                        // the upper/lower edge between two sampled points.
+                        if (py <= 0 || (previousPy !== null && previousPy > 0 && py < 0)) {
+                            projectileHitsTop = true;
+                        }
+
+                        if (py >= h || (previousPy !== null && previousPy < h && py > h)) {
+                            projectileHitsBottom = true;
+                        }
+
+                        if (isFirstPoint) {
+                            ctx.moveTo(currentPx, py);
+                            isFirstPoint = false;
+                        } else {
+                            ctx.lineTo(currentPx, py);
+                        }
+
+                        previousPy = py;
+                    }
+                }
+                ctx.stroke();
+
+                // Highlight only the edge(s) actually touched by the
+                // red projectile.
+                if (projectileHitsTop) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = "#2ecc71";
+                    ctx.lineWidth = 3;
+                    ctx.moveTo(0, 1);
+                    ctx.lineTo(w, 1);
+                    ctx.stroke();
+                }
+
+                if (projectileHitsBottom) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = "#2ecc71";
+                    ctx.lineWidth = 3;
+                    ctx.moveTo(0, h - 1);
+                    ctx.lineTo(w, h - 1);
+                    ctx.stroke();
+                }
+            }
+
+            detectedPlayers.forEach((p, idx) => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = (idx === selectedPlayerIndex) ? "#ff3333" : "#00d2d3";
+                ctx.lineWidth = (idx === selectedPlayerIndex) ? 2.5 : 2;
+                ctx.stroke();
+
+                ctx.fillStyle = (idx === selectedPlayerIndex) ? "#ff3333" : "#00d2d3";
+                ctx.font = "bold 12px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText((idx + 1).toString(), p.x, p.y - p.radius - 4);
+            });
+        }
+
+        canvas.addEventListener('click', (e) => {
+            if (!rawImgCanvas || detectedPlayers.length === 0) return;
+            const rect = canvas.getBoundingClientRect();
+            const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            let foundIndex = -1;
+            detectedPlayers.forEach((p, idx) => {
+                if (Math.hypot(p.x - clickX, p.y - clickY) <= p.radius + 10) {
+                    foundIndex = idx;
+                }
+            });
+
+            if (foundIndex !== -1) {
+                // Nếu đang ở chế độ Sao chéo, click nhân vật = chọn nhân vật đích.
+                if (crossCopyMode) {
+                    performCrossCopy(foundIndex);
+                    return;
+                }
+
+                if (foundIndex !== selectedPlayerIndex) {
+                    saveCurrentPlayerState();
+                    selectedPlayerIndex = foundIndex;
+                    loadPlayerState(selectedPlayerIndex);
+                    renderScene();
+                }
+            }
+        });
+    
+        // ================================================================
+        // Keyboard navigation for function parameter inputs
+        // ArrowUp   -> next input on the right
+        // ArrowDown -> previous input on the left
+        //
+        // The inputs are collected in DOM order, so navigation can move
+        // across different function buttons/forms as well.
+        // ================================================================
+        document.addEventListener('keydown', function(event) {
+            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+
+            const target = event.target;
+
+            // Only act on parameter input boxes.
+            if (!(target instanceof HTMLInputElement)) return;
+            if (target.type !== 'text') return;
+
+            // Do not interfere with modifier-key shortcuts.
+            if (event.ctrlKey || event.altKey || event.metaKey) return;
+
+            // Collect parameter inputs in the same order they appear
+            // in the page.
+            const inputs = Array.from(document.querySelectorAll('input'))
+                .filter(input => {
+                    if (input.type !== 'text') return false;
+                    if (input.disabled) return false;
+                    if (input.offsetParent === null) return false;
+
+                    // Function parameter inputs have the characteristic
+                    // small parameter-box styling/class in this page.
+                    // Exclude the search/other text fields by requiring
+                    // that the input belongs to a function-input container.
+                    return input.closest('.function-input, .param-input, .input-group, .function-card') ||
+                           input.closest('button') ||
+                           input.hasAttribute('data-param-index');
+                });
+
+            const currentIndex = inputs.indexOf(target);
+            if (currentIndex === -1) return;
+
+            let nextIndex;
+
+            if (event.key === 'ArrowUp') {
+                nextIndex = currentIndex + 1;
+            } else {
+                nextIndex = currentIndex - 1;
+            }
+
+            if (nextIndex < 0 || nextIndex >= inputs.length) return;
+
+            event.preventDefault();
+
+            const nextInput = inputs[nextIndex];
+            nextInput.focus();
+
+            // Put the caret at the end so typing continues naturally.
+            try {
+                const length = nextInput.value.length;
+                nextInput.setSelectionRange(length, length);
+            } catch (e) {}
+        });
+
+        </script>
+</body>
+</html>
